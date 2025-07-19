@@ -18,7 +18,7 @@ impl Lexer {
         .chars()
         .filter(|it| !it.is_ascii_whitespace())
         .map(|c| match c {
-            '0'..='9' | 'a'..='z'|'A'..='Z' => Token::Atom(c),
+            '0'..='9'|'a'..='z'|'A'..='Z' => Token::Atom(c),
             _ => Token::Op(c),
         }).collect::<Vec<_>>();
         tokens.reverse(); // To use pop
@@ -57,10 +57,16 @@ impl Expression {
     }
 }
 
+// Parser
 fn parse_expression(lexer: &mut Lexer, min_bp: f32) -> Expression{
     // Left Hand Side: must be an atom
     let mut lhs = match lexer.next() {
         Token::Atom(it) => Expression::Atom(it),
+        Token::Op('(') => {
+            let lhs = parse_expression(lexer, 0.0); // fold deeper expressions
+            assert_eq!(lexer.next(), Token::Op(')')); // consume and expect closing parenthesis
+            lhs
+            }
         t => panic!("bad token: {:?}", t)
     };
 
@@ -69,6 +75,7 @@ fn parse_expression(lexer: &mut Lexer, min_bp: f32) -> Expression{
         // Check if next token is operater
         let op = match lexer.peek() {
             Token::Op(op) => op,
+            Token::Op(')') => break, // escape loop on closing parenthesis
             Token::Eof => break,
             t => panic!("bad token: {:?}", t) // unexpected token 
         };
